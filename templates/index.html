@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accident Guard | Real-Time Risk Prediction</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="logo">ACCIDENT GUARD AI</div>
+        <div class="status-badge" style="background: rgba(46, 204, 113, 0.2); color: #2ecc71; padding: 0.5rem 1rem; border-radius: 2rem; font-size: 0.75rem; font-weight: 600;">
+            LIVE MONITORING ACTIVE
+        </div>
+    </header>
+
+    <main>
+        <div class="sidebar">
+            <div>
+                <h2 class="card-title">Route Parameters</h2>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">Configure your travel details for precise risk analysis.</p>
+
+                <!-- Profile restored notice (shown by JS for returning users) -->
+                <div id="profile-notice" style="display:none; background:#eff6ff; border:1px solid #bfdbfe; border-radius:0.5rem; padding:0.5rem 0.75rem; font-size:0.78rem; color:#1d4ed8; margin-bottom:1rem; display:none;">
+                    ✅ <strong>Profile restored</strong> — Your driver &amp; vehicle details were saved from your last visit.
+                    <a href="#" onclick="clearProfile()" style="margin-left:8px; color:#1d4ed8; text-decoration:underline;">Reset</a>
+                </div>
+                <div class="form-group">
+                    <label>Coordinates (Auto-detected)</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="lat" placeholder="Latitude" readonly>
+                        <input type="text" id="lon" placeholder="Longitude" readonly>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Driver Age <span style="font-weight:400; color:#94a3b8;">(18 – 70 years)</span></label>
+                    <input type="number" id="driver_age" placeholder="Enter driver age" value="25" min="18" max="70">
+                </div>
+
+                <div class="form-group">
+                    <label>Driving Experience <span style="font-weight:400; color:#94a3b8;">(years on road)</span></label>
+                    <input type="number" id="experience" placeholder="Enter years of experience" value="5" min="0" max="50">
+                </div>
+
+                <div class="form-group">
+                    <label>Vehicle Type</label>
+                    <select id="vehicle_type">
+                        <option value="0">Passenger Car</option>
+                        <option value="1">Motorcycle / Two-Wheeler</option>
+                        <option value="2">Commercial Truck</option>
+                        <option value="3">Public Transport (Bus)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Vehicle Age (Years)</label>
+                    <input type="number" id="vehicle_age" value="3">
+                </div>
+
+                <div class="form-group">
+                    <label>Target Speed (km/h)</label>
+                    <input type="range" id="speed" min="10" max="150" value="60" oninput="this.nextElementSibling.value = this.value + ' km/h'">
+                    <output style="font-size: 0.8rem; margin-top: 5px; display: block; text-align: right;">60 km/h</output>
+                </div>
+
+                <div class="form-group">
+                    <label>Current Environment</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        <select id="weather">
+                            <option value="0">Clear Sky</option>
+                            <option value="1">Rainy</option>
+                            <option value="2">Foggy</option>
+                            <option value="3">Snowy</option>
+                        </select>
+                        <select id="surface">
+                            <option value="0">Dry Surface</option>
+                            <option value="1">Wet Surface</option>
+                            <option value="2">Icy / Slippery</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Infrastructure</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                        <select id="road_type">
+                            <option value="0">Local Street</option>
+                            <option value="1">Main Road</option>
+                            <option value="2">Highway</option>
+                        </select>
+                        <select id="traffic">
+                            <option value="0">Low Traffic</option>
+                            <option value="1">Moderate</option>
+                            <option value="2">High Density</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Lighting</label>
+                    <select id="light">
+                        <option value="0">Daylight</option>
+                        <option value="1">Night / Darkness</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>📍 Previous Accidents at This Location
+                        <span style="font-weight:400; color:#94a3b8;">(historical data)</span>
+                    </label>
+                    <select id="accident_count">
+                        <option value="0">No recorded accidents</option>
+                        <option value="2">Very Low — 1 to 4 accidents</option>
+                        <option value="10">Moderate — 5 to 19 accidents</option>
+                        <option value="30">High — 20 to 39 accidents</option>
+                        <option value="50">Very High — 40+ accidents (Hotspot)</option>
+                    </select>
+                    <p style="font-size:0.72rem; color:#94a3b8; margin-top:4px;">
+                        Source: MoRTH / Telangana Traffic Police accident records
+                    </p>
+                </div>
+
+                <button id="predict-btn" onclick="predictRisk()">Analyze Route Risk</button>
+            </div>
+
+            <div id="risk-result" class="risk-result">
+                <div class="risk-level">Safe</div>
+                <div class="risk-message">Routine conditions detected. Have a safe journey!</div>
+                <div class="probability-bar">
+                    <div class="probability-fill"></div>
+                </div>
+                <div id="prob-text" style="font-size: 0.75rem; margin-top: 5px; color: var(--text-muted);">Confidence: 0%</div>
+            </div>
+        </div>
+
+        <div id="map-container">
+            <div id="map"></div>
+            <div style="position: absolute; bottom: 20px; right: 20px; z-index: 1000; background: var(--card-bg); padding: 10px; border-radius: 8px; border: 1px solid var(--glass-border); font-size: 0.75rem;">
+                <strong>Map Legend</strong><br>
+                🟢 Safe&nbsp;&nbsp; 🟡 Less Risky&nbsp;&nbsp; 🔴 Risky
+            </div>
+        </div>
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
